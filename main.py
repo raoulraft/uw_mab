@@ -29,39 +29,34 @@ while True:
         actions_writer = csv.writer(actions_file)
         actions_writer.writerow([internal_step, action])
 
-    # Read the rewards from the CSV file and choose actions to take
-    with open('rewards.csv') as rewards_file:
-        rewards_reader = csv.reader(rewards_file)
-        # next(rewards_reader)  # skip the header row
-        for row in rewards_reader:
-            step, reward = map(float, row)
+    # Wait for the next reward to be written to the file before taking the next step
+    while True:
+        with open('rewards.csv') as rewards_file_check:
+            rewards_reader_check = csv.reader(rewards_file_check)
+            # next(rewards_reader_check)  # skip the header row
+            row = next(rewards_reader_check)
+            step = int(row[0])
+            reward = float(row[1])
+            # print("step and reward found in rewards.csv: {}, {}".format(step, reward))
+
+        if step == internal_step:
             print("step and reward found in rewards.csv: {}, {}".format(step, reward))
+            break
 
-            # Wait for the next reward to be written to the file before taking the next step
-            while True:
-                with open('rewards.csv') as rewards_file_check:
-                    rewards_reader_check = csv.reader(rewards_file_check)
-                    # next(rewards_reader_check)  # skip the header row
-                    last_row = next(rewards_reader_check)
-                    last_step = float(last_row[0])
+        if step < internal_step:
+            # print("waiting for the reward to be written by AnPa (last_step < internal_step)")
+            pass
 
-                if last_step == internal_step:
-                    break
+        if step > internal_step:
+            print(f"you messed up somewhere, since step found on csv ({step}) > internal_step ({internal_step})"
+                  " (scripts are probably not coordinated on which step to start?)")
+            exit(-1)
 
-                if last_step < internal_step:
-                    # print("waiting for the reward to be written by AnPa (last_step < internal_step)")
-                    pass
+        time.sleep(0.1)
 
-                if last_step > internal_step:
-                    print("you probably fked up somewhere, since last_step > internal_step (scripts are not "
-                          "coordinated on which step to start?)")
-                    exit(-1)
+    # Update the action-value estimate for the chosen action
+    q_values[action] = q_values[action] + (reward - q_values[action]) / (step + 1)
 
-                time.sleep(0.1)
-
-            # Update the action-value estimate for the chosen action
-            q_values[action] = q_values[action] + (reward - q_values[action]) / (step + 1)
-
-            internal_step += 1
+    internal_step += 1
 
 
